@@ -1,0 +1,11 @@
+{
+  "name": "@pinapp-io/dives",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Dives — a pinapp for reef monitoring and dive site logbooks",
+  "main": "index.mjs",
+  "license": "MIT",
+  "dependencies": {
+    "@pinapp-io/harness": "file:../harness"
+  }
+}

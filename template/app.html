@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a4d68">
+  <title>Dive</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root {
+      --ocean-dark: #0a1628;
+      --ocean-mid: #0a4d68;
+      --ocean-light: #0e7490;
+      --ocean-glow: #22d3ee;
+      --coral: #f97316;
+      --reef-green: #10b981;
+      --sand: #fbbf24;
+      --text: #e0f2fe;
+      --text-dim: #94a3b8;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --card-bg: rgba(14, 116, 144, 0.15);
+      --border: rgba(34, 211, 238, 0.2);
+      --tab-height: 60px;
+      --header-height: 52px;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--ocean-dark);
+      color: var(--text);
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #app { display: flex; flex-direction: column; height: 100%; }
+
+    /* Header */
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 16px; background: var(--ocean-mid);
+      height: var(--header-height); flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .header-left { display: flex; align-items: center; gap: 8px; }
+    .header-left h1 { font-size: 18px; font-weight: 700; color: var(--ocean-glow); }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .sync-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; transition: background 0.3s; }
+    .sync-dot.online { background: var(--success); }
+    .sync-dot.offline { background: var(--danger); }
+    .sync-dot.syncing { background: var(--sand); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+    /* Main */
+    main { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 12px; scroll-behavior: smooth; }
+    .tab-content { display: none; height: 100%; }
+    .tab-content.active { display: flex; flex-direction: column; gap: 12px; animation: fadeIn 0.2s ease-out; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:translateY(0);} }
+
+    /* Tab Bar */
+    #tab-bar {
+      display: flex; background: var(--ocean-mid);
+      border-top: 1px solid var(--border);
+      height: var(--tab-height); flex-shrink: 0; padding: 0 4px;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .tab-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 2px; border: none; background: transparent; color: var(--text-dim);
+      font-size: 10px; cursor: pointer; transition: all 0.2s; position: relative; padding: 6px 2px;
+    }
+    .tab-btn:active { transform: scale(0.92); }
+    .tab-btn.active { color: var(--ocean-glow); }
+    .tab-btn.active::after {
+      content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 3px;
+      background: var(--ocean-glow); border-radius: 0 0 3px 3px;
+    }
+    .tab-icon { font-size: 20px; line-height: 1; }
+    .tab-label { font-weight: 600; letter-spacing: 0.3px; }
+
+    /* Cards */
+    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 12px 24px; border-radius: 10px; border: none; font-size: 15px;
+      font-weight: 600; cursor: pointer; transition: all 0.15s;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--ocean-light); color: white; }
+    .btn-coral { background: var(--coral); color: white; }
+    .btn-success { background: var(--reef-green); color: white; }
+    .btn-full { width: 100%; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .btn-sm { padding: 6px 14px; font-size: 13px; border-radius: 8px; }
+
+    /* Capture */
+    .capture-preview {
+      width: 100%; aspect-ratio: 4/3; border-radius: 12px; overflow: hidden;
+      background: #000; position: relative;
+    }
+    .capture-preview video, .capture-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .hex-overlay {
+      position: absolute; bottom: 8px; left: 8px; background: rgba(0,0,0,0.6);
+      padding: 4px 8px; border-radius: 6px; font-size: 11px; font-family: monospace; color: var(--ocean-glow);
+    }
+    .gps-status { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); }
+    .gps-status.locked { color: var(--success); }
+
+    /* Forms */
+    select, input, textarea {
+      width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: rgba(10,22,40,0.8); color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: var(--ocean-glow); box-shadow: 0 0 0 2px rgba(34,211,238,0.15); }
+    label { font-size: 13px; font-weight: 600; color: var(--text-dim); margin-bottom: 4px; display: block; }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+
+    /* Health chips */
+    .health-picker { display: flex; gap: 4px; margin-top: 4px; }
+    .health-chip {
+      flex: 1; padding: 8px 0; border-radius: 8px; text-align: center;
+      font-size: 11px; font-weight: 700; cursor: pointer; border: 2px solid transparent;
+      color: #fff; transition: border-color 0.15s;
+    }
+    .health-chip:active { transform: scale(0.95); }
+    .health-chip.selected { border-color: #fff; }
+    .health-chip[data-v="1"] { background: #ef4444; }
+    .health-chip[data-v="2"] { background: #e67e22; }
+    .health-chip[data-v="3"] { background: #f1c40f; color: #333; }
+    .health-chip[data-v="4"] { background: #a8d84e; color: #333; }
+    .health-chip[data-v="5"] { background: #2ecc71; }
+
+    /* Map */
+    #map-container { flex: 1; border-radius: 12px; overflow: hidden; min-height: 300px; }
+    .map-detail-panel {
+      max-height: 250px; overflow-y: auto; border-top: 2px solid var(--ocean-glow);
+      animation: slideUp 0.2s ease-out;
+    }
+    @keyframes slideUp { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+
+    /* Observation items */
+    .obs-item {
+      display: flex; gap: 12px; padding: 10px; background: var(--card-bg);
+      border: 1px solid var(--border); border-radius: 10px; cursor: pointer; transition: all 0.15s;
+    }
+    .obs-item:hover { border-color: var(--ocean-glow); }
+    .obs-thumb { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; flex-shrink: 0; }
+
+    /* Day headers */
+    .day-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; margin-bottom: 6px; background: rgba(14,116,144,0.1);
+      border-radius: 8px; cursor: pointer; transition: background 0.15s;
+    }
+    .day-header:hover { background: rgba(14,116,144,0.2); }
+
+    /* Signature badges */
+    .signature-badge { font-size: 10px; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 3px; font-weight: 600; }
+    .signature-badge.signed { background: rgba(34,197,94,0.2); color: var(--success); }
+    .signature-badge.cosigned { background: rgba(249,115,22,0.2); color: var(--coral); }
+    .signature-badge.anchored { background: rgba(34,211,238,0.2); color: var(--ocean-glow); }
+
+    /* Lightbox */
+    .lightbox {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.92); z-index: 1000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px;
+    }
+    .lightbox img { max-width: 100%; max-height: 70vh; border-radius: 12px; object-fit: contain; }
+    .lightbox-close {
+      position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.15);
+      border: none; color: white; font-size: 24px; width: 40px; height: 40px;
+      border-radius: 50%; cursor: pointer;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: calc(var(--tab-height) + 16px); left: 50%; transform: translateX(-50%);
+      background: var(--ocean-mid); border: 1px solid var(--ocean-glow); color: var(--text);
+      padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: 600;
+      z-index: 500; opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; }
+
+    /* Photo strip */
+    .photo-strip { display: flex; gap: 6px; overflow-x: auto; padding: 4px 0; -webkit-overflow-scrolling: touch; }
+    .photo-strip::-webkit-scrollbar { height: 0; }
+    .strip-thumb { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; flex-shrink: 0; cursor: pointer; border: 2px solid transparent; }
+    .strip-thumb:hover { border-color: var(--ocean-glow); }
+
+    /* Species card */
+    .species-card { display: flex; gap: 8px; align-items: center; padding: 6px; border-bottom: 1px solid var(--border); border-radius: 6px; text-decoration: none; color: inherit; }
+    .species-card:hover { background: rgba(14,116,144,0.15); }
+    .species-card img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; flex-shrink: 0; }
+
+    /* Utilities */
+    .hidden { display: none !important; }
+    .text-dim { color: var(--text-dim); }
+    .text-glow { color: var(--ocean-glow); }
+    .text-sm { font-size: 13px; }
+    .mt-2 { margin-top: 8px; }
+    .mt-4 { margin-top: 16px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <div class="header-left">
+        <h1 id="site-title">Dive Site</h1>
+      </div>
+      <div class="header-right">
+        <span id="sync-indicator" class="sync-dot offline" title="Offline"></span>
+      </div>
+    </header>
+
+    <main id="main">
+      <div id="tab-home" class="tab-content active"></div>
+      <div id="tab-capture" class="tab-content"></div>
+      <div id="tab-map" class="tab-content"></div>
+      <div id="tab-history" class="tab-content"></div>
+      <div id="tab-import" class="tab-content"></div>
+    </main>
+
+    <nav id="tab-bar">
+      <button class="tab-btn active" data-tab="home"><span class="tab-icon">&#x1F3E0;</span><span class="tab-label">Home</span></button>
+      <button class="tab-btn" data-tab="capture"><span class="tab-icon">&#x1F4F7;</span><span class="tab-label">Capture</span></button>
+      <button class="tab-btn" data-tab="map"><span class="tab-icon">&#x1F5FA;&#xFE0F;</span><span class="tab-label">Map</span></button>
+      <button class="tab-btn" data-tab="history"><span class="tab-icon">&#x1F4CB;</span><span class="tab-label">History</span></button>
+      <button class="tab-btn" data-tab="import"><span class="tab-icon">&#x1F4E5;</span><span class="tab-label">Import</span></button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module">
+    import * as h3 from 'https://unpkg.com/h3-js@4.1.0/dist/h3-js.es.js';
+    // Strip the trailing instance address from the URL to get the agent mount.
+    const MOUNT = window.location.pathname.replace(/\/[^/]*\/?$/, '');
+    const { boot } = await import(`${MOUNT}/assets/client/app.js`);
+    boot(h3);
+  </script>
+</body>
+</html>

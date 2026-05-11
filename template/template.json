@@ -1,0 +1,24 @@
+{
+  "id": "dives",
+  "version": "0.1.0",
+  "title": "Dives",
+  "description": "Reef monitoring logbook. Dive logs, coral health, species observations, underwater photos. Data anchored to H3 hex grid on Polygon.",
+  "icon": "icon.svg",
+  "mintUrl": "mint.html",
+  "appUrl": "app.html",
+  "fixedAttributes": [
+    { "name": "name",          "label": "Site Name",       "type": "string", "required": true },
+    { "name": "shopName",      "label": "Dive Shop",       "type": "string", "required": true },
+    { "name": "region",        "label": "Region",          "type": "string" },
+    { "name": "maxDepth",      "label": "Max Depth (m)",   "type": "number" },
+    { "name": "certification", "label": "Cert Required",   "type": "string" }
+  ],
+  "eventTypes": [
+    { "id": "dive",        "label": "Dive Log",    "icon": "\ud83e\udd3f" },
+    { "id": "coral",       "label": "Coral",       "icon": "\ud83e\udeb8" },
+    { "id": "species",     "label": "Species",     "icon": "\ud83d\udc20" },
+    { "id": "photo",       "label": "Photo",       "icon": "\ud83d\udcf7" },
+    { "id": "condition",   "label": "Conditions",  "icon": "\ud83c\udf0a" },
+    { "id": "note",        "label": "Note",        "icon": "\ud83d\udcdd" }
+  ]
+}

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Mint a Dive Site</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f4f6;
+      min-height: 100vh;
+      padding: 1.5rem;
+      color: #1a1a1a;
+    }
+    .card {
+      max-width: 480px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      padding: 1.5rem;
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 0.25rem; color: #0077b6; }
+    .sub { color: #666; font-size: 0.92rem; margin-bottom: 1.5rem; }
+    .field { margin-bottom: 1.1rem; }
+    label { display: block; margin-bottom: 0.35rem; font-weight: 500; font-size: 0.92rem; }
+    .req { color: #d33; }
+    input {
+      width: 100%; padding: 0.7rem 0.85rem;
+      border: 1px solid #d6d6db; border-radius: 8px;
+      font-size: 1rem; background: #fafafb;
+    }
+    input:focus { outline: 2px solid #0077b6; background: #fff; }
+    .row { display: flex; gap: 0.75rem; }
+    .row > .field { flex: 1; }
+    button {
+      width: 100%; padding: 0.95rem;
+      background: #0077b6; color: #fff;
+      border: none; border-radius: 10px;
+      font-size: 1rem; font-weight: 600;
+      cursor: pointer; margin-top: 0.5rem;
+    }
+    button:hover { background: #005f8a; }
+    button:disabled { background: #999; cursor: not-allowed; }
+    .hint {
+      font-size: 0.82rem; color: #888;
+      margin-top: 1rem; text-align: center;
+    }
+    .hint strong { color: #444; }
+    .error {
+      background: #fde8e8; color: #a02020;
+      padding: 0.75rem 0.9rem; border-radius: 8px;
+      margin-bottom: 1rem; font-size: 0.92rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Mint a Dive Site</h1>
+    <p class="sub">A permanent reef logbook anchored to this location. Print the QR code and post it at the dive shop.</p>
+
+    <div class="error" id="error"></div>
+
+    <form id="mintForm">
+      <div class="field">
+        <label for="name">Site Name <span class="req">*</span></label>
+        <input type="text" id="name" name="name" required placeholder="Anse Chastanet Reef">
+      </div>
+
+      <div class="field">
+        <label for="shopName">Dive Shop <span class="req">*</span></label>
+        <input type="text" id="shopName" name="shopName" required placeholder="Island Divers">
+      </div>
+
+      <div class="field">
+        <label for="region">Region</label>
+        <input type="text" id="region" name="region" placeholder="St. Lucia, Caribbean">
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label for="maxDepth">Max Depth (m)</label>
+          <input type="number" id="maxDepth" name="maxDepth" min="1" max="300" placeholder="45">
+        </div>
+        <div class="field">
+          <label for="certification">Cert Required</label>
+          <input type="text" id="certification" name="certification" placeholder="Open Water">
+        </div>
+      </div>
+
+      <button type="submit" id="submitBtn">Mint Dive Site</button>
+    </form>
+
+    <p class="hint">Mints via <strong>EIP-1167 minimal proxy</strong> on Polygon. Cost: ~$0.05&ndash;$0.20.</p>
+  </div>
+
+  <script>
+    // Mount path = the URL prefix this agent is served from (e.g.
+    // /agent/epistery/dive). Strip a trailing /mint or trailing slash.
+    const MOUNT = window.location.pathname.replace(/\/(mint|index\.html)?\/?$/, '');
+    const API = `${MOUNT}/api`;
+
+    const form = document.getElementById('mintForm');
+    const btn = document.getElementById('submitBtn');
+    const errBox = document.getElementById('error');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errBox.style.display = 'none';
+      btn.disabled = true;
+      btn.textContent = 'Minting...';
+
+      const fixedAttributes = {};
+      new FormData(form).forEach((v, k) => { if (v) fixedAttributes[k] = v; });
+
+      try {
+        const res = await fetch(`${API}/instance`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fixedAttributes })
+        });
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({}));
+          throw new Error(e.error || 'Mint failed');
+        }
+        const { instance } = await res.json();
+        window.location.href = `${MOUNT}/${instance.address}`;
+      } catch (err) {
+        errBox.textContent = err.message;
+        errBox.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Mint Dive Site';
+      }
+    });
+  </script>
+</body>
+</html>

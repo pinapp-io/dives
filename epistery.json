@@ -1,0 +1,13 @@
+{
+  "name": "@pinapp-io/dives",
+  "title": "Dives",
+  "version": "0.1.0",
+  "description": "A pinapp for reef monitoring and dive-site logbooks. One contract per site, with dive logs, coral health, species sightings, and underwater photos anchored to an H3 hex grid.",
+  "author": "pinapp-io",
+  "main": "index.mjs",
+  "icon": "/agent/pinapp-io/dives/icon.svg",
+  "permissions": [
+    "whitelist:read",
+    "ipfs:write"
+  ]
+}
